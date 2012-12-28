@@ -46,10 +46,16 @@ This should output:
 
     Turning on device 2, Skrivbordslampa - Success
 
-
-
-
 ### Turning a device _OFF_
 ```ruby
 curl -X PUT http://localhost:8080/4/off
 ```
+
+This should output:
+
+    Turning off device 4, Sovrumslampa - Success
+
+### Async calls
+
+You can also add a bang to the end of the on/off calls to do an
+async request: `curl -X PUT http://localhost:8080/3/off!`

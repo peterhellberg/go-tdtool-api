@@ -21,9 +21,19 @@ func main() {
 			Output(w, DeviceCommand("--on", req))
 		}))
 
+	m.Put("/:device/on!", http.HandlerFunc(
+		func(w http.ResponseWriter, req *http.Request) {
+			Async(w, DeviceCommand("--on", req))
+		}))
+
 	m.Put("/:device/off", http.HandlerFunc(
 		func(w http.ResponseWriter, req *http.Request) {
 			Output(w, DeviceCommand("--off", req))
+		}))
+
+	m.Put("/:device/off!", http.HandlerFunc(
+		func(w http.ResponseWriter, req *http.Request) {
+			Async(w, DeviceCommand("--off", req))
 		}))
 
 	http.Handle("/", m)
@@ -44,6 +54,15 @@ func Output(w http.ResponseWriter, cmd *exec.Cmd) {
 	}
 	io.Copy(w, stdout)
 	cmd.Wait()
+}
+
+func Async(w http.ResponseWriter, cmd *exec.Cmd) {
+	err := cmd.Start()
+	if err != nil {
+		log.Print(err)
+	}
+
+	w.WriteHeader(202)
 }
 
 func DeviceCommand(option string, req *http.Request) *exec.Cmd {
