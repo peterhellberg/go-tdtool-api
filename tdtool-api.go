@@ -16,22 +16,22 @@ func main() {
 			Output(w, exec.Command("tdtool", "-l"))
 		}))
 
-	m.Put("/:device/on", http.HandlerFunc(
+	m.Put("/:device/on/sync", http.HandlerFunc(
 		func(w http.ResponseWriter, req *http.Request) {
 			Output(w, DeviceCommand("--on", req))
 		}))
 
-	m.Put("/:device/on!", http.HandlerFunc(
+	m.Put("/:device/on", http.HandlerFunc(
 		func(w http.ResponseWriter, req *http.Request) {
 			Async(w, DeviceCommand("--on", req))
 		}))
 
-	m.Put("/:device/off", http.HandlerFunc(
+	m.Put("/:device/off/sync", http.HandlerFunc(
 		func(w http.ResponseWriter, req *http.Request) {
 			Output(w, DeviceCommand("--off", req))
 		}))
 
-	m.Put("/:device/off!", http.HandlerFunc(
+	m.Put("/:device/off", http.HandlerFunc(
 		func(w http.ResponseWriter, req *http.Request) {
 			Async(w, DeviceCommand("--off", req))
 		}))
