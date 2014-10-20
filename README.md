@@ -55,7 +55,10 @@ This should output:
 
     Turning off device 4, Sovrumslampa - Success
 
-### Async calls
+### Sync calls
 
-You can also add a bang to the end of the on/off calls to do an
-async request: `curl -X PUT http://localhost:8080/3/off!`
+You can also make synchronous requests by adding `/sync` to the end of the path:
+
+```
+curl -X PUT http://localhost:8080/3/off/sync
+```
