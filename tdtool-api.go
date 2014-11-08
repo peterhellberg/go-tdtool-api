@@ -13,30 +13,12 @@ import (
 func main() {
 	m := pat.New()
 
-	m.Get("/", http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			Output(w, exec.Command("tdtool", "-l"))
-		}))
+	m.Get("/", handle(Output, exec.Command("tdtool", "-l")))
 
-	m.Put("/:device/on/sync", http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			Output(w, DeviceCommand("--on", r))
-		}))
-
-	m.Put("/:device/on", http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			Async(w, DeviceCommand("--on", r))
-		}))
-
-	m.Put("/:device/off/sync", http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			Output(w, DeviceCommand("--off", r))
-		}))
-
-	m.Put("/:device/off", http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			Async(w, DeviceCommand("--off", r))
-		}))
+	m.Put("/:device/on/sync", handleDevice(Output, "--on"))
+	m.Put("/:device/on", handleDevice(Async, "--on"))
+	m.Put("/:device/off/sync", handleDevice(Output, "--off"))
+	m.Put("/:device/off", handleDevice(Async, "--off"))
 
 	http.Handle("/", m)
 
@@ -84,4 +66,18 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+type executor func(w http.ResponseWriter, cmd *exec.Cmd)
+
+func handle(fn executor, cmd *exec.Cmd) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fn(w, cmd)
+	})
+}
+
+func handleDevice(fn executor, param string) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fn(w, DeviceCommand(param, r))
+	})
 }
