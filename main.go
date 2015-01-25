@@ -7,25 +7,23 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/bmizerany/pat"
+	"github.com/julienschmidt/httprouter"
 )
 
 func main() {
-	m := pat.New()
+	router := httprouter.New()
 
-	m.Get("/", handle(Output, exec.Command("tdtool", "-l")))
+	router.GET("/", handle(Output, exec.Command("tdtool", "-l")))
 
-	m.Put("/:device/on/sync", handleDevice(Output, "--on"))
-	m.Put("/:device/on", handleDevice(Async, "--on"))
-	m.Put("/:device/off/sync", handleDevice(Output, "--off"))
-	m.Put("/:device/off", handleDevice(Async, "--off"))
-
-	http.Handle("/", m)
+	router.PUT("/:device/on/sync", handleDevice(Output, "--on"))
+	router.PUT("/:device/on", handleDevice(Async, "--on"))
+	router.PUT("/:device/off/sync", handleDevice(Output, "--off"))
+	router.PUT("/:device/off", handleDevice(Async, "--off"))
 
 	port := getenv("PORT", "8080")
 
 	log.Printf("Listening on http://0.0.0.0:%s", port)
-	err := http.ListenAndServe(":"+port, nil)
+	err := http.ListenAndServe(":"+port, router)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,8 +54,8 @@ func Async(w http.ResponseWriter, cmd *exec.Cmd) {
 }
 
 // DeviceCommand returns a tdtool command for :device and option
-func DeviceCommand(option string, r *http.Request) *exec.Cmd {
-	return exec.Command("tdtool", option, r.URL.Query().Get(":device"))
+func DeviceCommand(option, device string) *exec.Cmd {
+	return exec.Command("tdtool", option, device)
 }
 
 func getenv(key, fallback string) string {
@@ -70,14 +68,14 @@ func getenv(key, fallback string) string {
 
 type executor func(w http.ResponseWriter, cmd *exec.Cmd)
 
-func handle(fn executor, cmd *exec.Cmd) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func handle(fn executor, cmd *exec.Cmd) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fn(w, cmd)
-	})
+	}
 }
 
-func handleDevice(fn executor, param string) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fn(w, DeviceCommand(param, r))
-	})
+func handleDevice(fn executor, param string) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		fn(w, DeviceCommand(param, ps.ByName("device")))
+	}
 }
