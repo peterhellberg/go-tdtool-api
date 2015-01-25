@@ -1,19 +1,63 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 
 	"github.com/julienschmidt/httprouter"
 )
 
+var devicePattern = regexp.MustCompile(`(\d+)\t(.+)\t(ON|OFF)`)
+
+func listOutput() ([]byte, error) {
+	return exec.Command("tdtool", "-l").Output()
+}
+
+func newList(out []byte) *list {
+	devices := []device{}
+
+	if found := devicePattern.FindAllStringSubmatch(string(out), -1); found != nil {
+		for _, f := range found {
+			devices = append(devices, device{
+				ID:     f[1],
+				Name:   f[2],
+				Status: f[3] == "ON",
+			})
+		}
+	}
+
+	return &list{Count: len(devices), Devices: devices}
+}
+
+type list struct {
+	Count   int
+	Devices []device
+}
+
+type device struct {
+	ID     string
+	Name   string
+	Status bool
+}
+
 func main() {
 	router := httprouter.New()
 
-	router.GET("/", handle(Output, []string{"tdtool", "-l"}))
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		if out, err := listOutput(); err == nil {
+			list := newList(out)
+
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			json.NewEncoder(w).Encode(list)
+		}
+	})
+
+	router.GET("/list", handle(Output, []string{"tdtool", "-l"}))
 
 	router.PUT("/:device/on/sync", handleDevice(Output, "--on"))
 	router.PUT("/:device/on", handleDevice(Async, "--on"))
