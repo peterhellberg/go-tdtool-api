@@ -13,7 +13,7 @@ import (
 func main() {
 	router := httprouter.New()
 
-	router.GET("/", handle(Output, exec.Command("tdtool", "-l")))
+	router.GET("/", handle(Output, []string{"tdtool", "-l"}))
 
 	router.PUT("/:device/on/sync", handleDevice(Output, "--on"))
 	router.PUT("/:device/on", handleDevice(Async, "--on"))
@@ -30,7 +30,9 @@ func main() {
 }
 
 // Output writes the output of a command to the provided response writer
-func Output(w http.ResponseWriter, cmd *exec.Cmd) {
+func Output(w http.ResponseWriter, args []string) {
+	cmd := exec.Command("tdtool", args...)
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Print(err)
@@ -39,23 +41,22 @@ func Output(w http.ResponseWriter, cmd *exec.Cmd) {
 	if err != nil {
 		log.Print(err)
 	}
+
 	io.Copy(w, stdout)
+
 	cmd.Wait()
 }
 
 // Async executes a command asynchronously
-func Async(w http.ResponseWriter, cmd *exec.Cmd) {
+func Async(w http.ResponseWriter, args []string) {
+	cmd := exec.Command("tdtool", args...)
+
 	err := cmd.Start()
 	if err != nil {
 		log.Print(err)
 	}
 
 	w.WriteHeader(202)
-}
-
-// DeviceCommand returns a tdtool command for :device and option
-func DeviceCommand(option, device string) *exec.Cmd {
-	return exec.Command("tdtool", option, device)
 }
 
 func getenv(key, fallback string) string {
@@ -66,16 +67,16 @@ func getenv(key, fallback string) string {
 	return fallback
 }
 
-type executor func(w http.ResponseWriter, cmd *exec.Cmd)
+type executor func(w http.ResponseWriter, args []string)
 
-func handle(fn executor, cmd *exec.Cmd) httprouter.Handle {
+func handle(fn executor, args []string) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		fn(w, cmd)
+		fn(w, args)
 	}
 }
 
 func handleDevice(fn executor, param string) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		fn(w, DeviceCommand(param, ps.ByName("device")))
+		fn(w, []string{param, ps.ByName("device")})
 	}
 }
